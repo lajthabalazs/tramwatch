@@ -10,7 +10,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -37,32 +36,15 @@ public class Main extends Component implements MouseListener {
 	int verticalTiles;
 	int horizontalTiles;
 	int gridSize = 12;
+	private long value;
 
 	public void paint(Graphics g) {
 		g.drawImage(img, 0, 0, null);
+		g.setColor(Color.BLACK);
+		g.drawString("Value " + value, 0, 500);
 		g.setColor(Color.red);
-		verticalTiles = imageHeight / gridSize + 1;
-		horizontalTiles = imageWidth / gridSize + 1;
-		/*
-		for (int i = 0; i < verticalTiles + 1; i++) { 
-			g.drawLine(0, i * gridSize, horizontalTiles * gridSize, i * gridSize);
-		}
-		for (int i = 0; i < horizontalTiles + 1; i++) {
-			g.drawLine(i*gridSize, 0, i*gridSize, verticalTiles * gridSize);
-		}
-		*/
 		int gridWidth = gridSize * horizontalTiles;
 		int gridHeight = gridSize * verticalTiles;
-		if (coefficients == null) {
-			coefficients = new int[HISTORTY_LENGTH][horizontalTiles][verticalTiles];
-			for (int i = 0; i < coefficients.length; i++) {
-				for (int j = 0; j < coefficients[i].length; j++) {
-					for (int k = 0; k < coefficients[j][j].length; k++) {
-						coefficients[i][j][k] = 0;
-					}
-				}
-			}
-		}
 		int index = 0;
 		drawRectangles:
 		for (int i = 0; i < 6; i++) {
@@ -200,6 +182,18 @@ public class Main extends Component implements MouseListener {
 			System.out.println("Error loading image ");
 			e.printStackTrace();
 		}
+		verticalTiles = imageHeight / gridSize + 1;
+		horizontalTiles = imageWidth / gridSize + 1;
+		if (coefficients == null) {
+			coefficients = new int[HISTORTY_LENGTH][horizontalTiles][verticalTiles];
+			for (int i = 0; i < coefficients.length; i++) {
+				for (int j = 0; j < coefficients[i].length; j++) {
+					for (int k = 0; k < coefficients[j][j].length; k++) {
+						coefficients[i][j][k] = 0;
+					}
+				}
+			}
+		}
 	}
 	
 	private void calculateDifference() {
@@ -227,11 +221,6 @@ public class Main extends Component implements MouseListener {
 								if (yPixel >= imageHeight){
 									continue nextX;
 								}
-								
-								/*System.out.println("Block " + xTileIndex + " " + yTileIndex + ", processing pixel " + xPixel + " " + yPixel + " " +
-								+ currentPixelData[xPixel][yPixel][0] + " "
-								+ currentPixelData[xPixel][yPixel][1] + " "
-								+ currentPixelData[xPixel][yPixel][1]);*/
 								totalDifference += Math.abs(currentPixelData[xPixel][yPixel][0] - referencePixelData[xPixel][yPixel][0]); 
 								totalDifference += Math.abs(currentPixelData[xPixel][yPixel][1] - referencePixelData[xPixel][yPixel][1]); 
 								totalDifference += Math.abs(currentPixelData[xPixel][yPixel][2] - referencePixelData[xPixel][yPixel][2]);
@@ -243,6 +232,20 @@ public class Main extends Component implements MouseListener {
 				}
 			}
 		}
+		value = 0;
+			for (int i = 0; i < coefficients.length; i++) {
+				if (aggregatedDifferences[i] != null) {
+					for (int j = 0; j < coefficients[i].length; j++) {
+						for (int k = 0; k < coefficients[i][j].length; k++) {
+							try {			
+								value += coefficients[i][j][k] * aggregatedDifferences[i][j][k];
+							}catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			}
 	}
 	
 	public Dimension getPreferredSize() {
@@ -270,24 +273,15 @@ public class Main extends Component implements MouseListener {
 
 	private static int[][][] getPixelData(BufferedImage image,
 			int x, int y, int twidth, int theight) {
-		final byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
 		final int imageWidth = image.getWidth();
 		final int imageHeight = image.getHeight();
-		final boolean hasAlphaChannel = image.getAlphaRaster() != null;
 
 		int[][][] result = new int[imageWidth][imageHeight][3];
-		int pixelLength = 3;
-		if (hasAlphaChannel) {
-			pixelLength = 4;
-		}
 		for (int i = x; i < twidth; i++) {
 			for (int j = y; j < theight; j++) {
-				//int pixel = (j * imageWidth + i) * pixelLength;
-				result[i][j][2] = ((image.getRGB(i, j) & 0x0000ff));//((int) pixels[pixel + pixelLength==4?1:0]); // blue
-				result[i][j][1] = ((image.getRGB(i, j) & 0x00ff00)>>8);//(((int) pixels[pixel + pixelLength==4?2:1])); // green
-				result[i][j][0] = ((image.getRGB(i, j) & 0xff0000)>>16);//(((int) pixels[pixel + pixelLength==4?3:2])); // red
-				//System.out.println("Processing pixel " + pixel + " " + i + " " + j + " result " + 
-				//result[i][j][0] + " " + result[i][j][1] + " " + result[i][j][2] + " expected " + ((image.getRGB(i, j) & 0xff0000)>>16)+ " " + ((image.getRGB(i, j) & 0x00ff00)>>8)+ " " + (image.getRGB(i, j) & 0x0000ff));
+				result[i][j][2] = ((image.getRGB(i, j) & 0x0000ff));
+				result[i][j][1] = ((image.getRGB(i, j) & 0x00ff00)>>8);
+				result[i][j][0] = ((image.getRGB(i, j) & 0xff0000)>>16);
 			}
 		}
 		return result;
