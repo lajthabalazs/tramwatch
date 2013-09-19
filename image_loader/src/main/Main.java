@@ -5,6 +5,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
@@ -15,7 +17,9 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 public class Main extends Component implements MouseListener {
 	private static final HashMap<Integer, Color> colors = new HashMap<Integer, Color>();
@@ -37,11 +41,12 @@ public class Main extends Component implements MouseListener {
 	int horizontalTiles;
 	int gridSize = 12;
 	private long value;
+	private boolean paused = false;
 
 	public void paint(Graphics g) {
 		g.drawImage(img, 0, 0, null);
 		g.setColor(Color.BLACK);
-		g.drawString("Value " + value, 0, 500);
+		g.drawString("Value " + value, 0, 360);
 		g.setColor(Color.red);
 		int gridWidth = gridSize * horizontalTiles;
 		int gridHeight = gridSize * verticalTiles;
@@ -153,14 +158,18 @@ public class Main extends Component implements MouseListener {
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-					loadImage();
-					calculateDifference();
+					if (!paused) {
+						loadImage();
+						calculateDifference();
+					}
 					invalidate();
 					repaint();
-					imageIndex++;
-					imageRoundRobinIndex ++;
-					if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
-						imageRoundRobinIndex = 0;
+					if (!paused) {
+						imageIndex++;
+						imageRoundRobinIndex ++;
+						if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
+							imageRoundRobinIndex = 0;
+						}
 					}
 				}
 			}
@@ -250,10 +259,10 @@ public class Main extends Component implements MouseListener {
 	
 	public Dimension getPreferredSize() {
 		if (img == null) {
-			return new Dimension(400, 400);
+			return new Dimension(400, 800);
 		} else {
-			return new Dimension(Math.max(400, img.getWidth(null)), Math.max(
-					400, img.getHeight(null)));
+			return new Dimension(Math.max(400, img.getWidth(null) * 8), Math.max(
+					400, img.getHeight(null) * 6));
 		}
 	}
 
@@ -265,8 +274,19 @@ public class Main extends Component implements MouseListener {
 				System.exit(0);
 			}
 		});
-
-		f.add(new Main());
+		JPanel panel  = new JPanel();
+		f.setContentPane(panel);
+		final Main main = new Main();
+		panel.add(main);
+		JButton pp = new JButton("Play/Pause");
+		pp.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				main.paused = !main.paused;
+			}
+		});
+		panel.add(pp);
 		f.pack();
 		f.setVisible(true);
 	}
@@ -300,10 +320,18 @@ public class Main extends Component implements MouseListener {
 		int x = (p.x - historyX * gridWidth) / gridSize;
 		int y = (p.y - historyY * gridHeight)/ gridSize;
 		if (e.getButton() == MouseEvent.BUTTON1) {
-			coefficients[historyIndex][x][y] = 1;
+			if (coefficients[historyIndex][x][y] == 1) {
+				coefficients[historyIndex][x][y] = 0;
+			} else {
+				coefficients[historyIndex][x][y] = 1;
+			}
 		}
 		else if ((e.getButton() == MouseEvent.BUTTON2) || (e.getButton() == MouseEvent.BUTTON3)){
-			coefficients[historyIndex][x][y] = -1;
+			if (coefficients[historyIndex][x][y] == -1) {
+				coefficients[historyIndex][x][y] = 0;
+			} else {
+				coefficients[historyIndex][x][y] = -1;
+			}
 		}
 		System.out.println("Click " + x + " " + y);
 	}
