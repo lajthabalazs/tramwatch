@@ -14,6 +14,7 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
@@ -22,6 +23,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 public class Main extends Component implements MouseListener {
+	private static final long serialVersionUID = 4709581889925916389L;
+
 	private static final HashMap<Integer, Color> colors = new HashMap<Integer, Color>();
 	{
 		for (int i = 0; i < 255; i++) {
@@ -34,19 +37,19 @@ public class Main extends Component implements MouseListener {
 	private BufferedImage[] imageRoundRobin = new BufferedImage[HISTORTY_LENGTH];
 	int imageRoundRobinIndex = 0;
 	private int[][][] aggregatedDifferences = new int[HISTORTY_LENGTH][][];
-	private int[][][] coefficients;
+	ArrayList<Trigger> triggers = new ArrayList<Trigger>();
+	Trigger selectedTrigger;
+	
 	int imageHeight;
 	int imageWidth;
 	int verticalTiles;
 	int horizontalTiles;
 	int gridSize = 12;
-	private long value;
 	private boolean paused = false;
 
 	public void paint(Graphics g) {
 		g.drawImage(img, 0, 0, null);
 		g.setColor(Color.BLACK);
-		g.drawString("Value " + value, 0, 360);
 		g.setColor(Color.red);
 		int gridWidth = gridSize * horizontalTiles;
 		int gridHeight = gridSize * verticalTiles;
@@ -79,65 +82,73 @@ public class Main extends Component implements MouseListener {
 		g.setColor(Color.black);
 		// Draw borders
 		Color color = null;
-		for (int i = 0; i < coefficients.length; i++) {
-			for (int j = 0; j < coefficients[i].length; j++) {
-				for (int k = 0; k < coefficients[i][j].length; k++) {
-					color = null;
-					boolean drawTop = false;
-					boolean drawRight = false;
-					boolean drawLeft = false;
-					boolean drawBottom = false;
-					if (coefficients[i][j][k] == 1) {
-						color = Color.GREEN;
-					} else if (coefficients[i][j][k] == -1) {
-						color = Color.RED;
+		if (selectedTrigger != null && aggregatedDifferences != null) {
+			for (int i = 0; i < aggregatedDifferences.length; i++) {
+				if (aggregatedDifferences[i] == null) {
+					continue;
+				}
+				for (int j = 0; j < aggregatedDifferences[i].length; j++) {
+					if (aggregatedDifferences[i][j] == null) {
+						continue;
 					}
-					// Check neighbors
-					try {
-						if (coefficients[i][j][k] != coefficients[i][j][k - 1]) {
+					for (int k = 0; k < aggregatedDifferences[i][j].length; k++) {
+						color = null;
+						boolean drawTop = false;
+						boolean drawRight = false;
+						boolean drawLeft = false;
+						boolean drawBottom = false;
+						if (selectedTrigger.getCoefficient(i,j,k) == 1) {
+							color = Color.GREEN;
+						} else if (selectedTrigger.getCoefficient(i,j,k) == -1) {
+							color = Color.RED;
+						}
+						// Check neighbors
+						try {
+							if (selectedTrigger.getCoefficient(i,j,k) != selectedTrigger.getCoefficient(i,j,k-1)) {
+								drawTop = true;
+							}
+						} catch (Exception e) {
 							drawTop = true;
 						}
-					} catch (Exception e) {
-						drawTop = true;
-					}
-					try {
-						if (coefficients[i][j][k] != coefficients[i][j][k + 1]) {
+						try {
+							if (selectedTrigger.getCoefficient(i,j,k) != selectedTrigger.getCoefficient(i,j,k+1)) {
+								drawBottom = true;
+							}
+						} catch (Exception e) {
 							drawBottom = true;
 						}
-					} catch (Exception e) {
-						drawBottom = true;
-					}
-					try {
-						if (coefficients[i][j][k] != coefficients[i][j - 1][k]) {
+						try {
+							if (selectedTrigger.getCoefficient(i,j,k) != selectedTrigger.getCoefficient(i,j-1,k)) {
+								drawLeft = true;
+							}
+						} catch (Exception e) {
 							drawLeft = true;
 						}
-					} catch (Exception e) {
-						drawLeft = true;
-					}
-					try {
-						if (coefficients[i][j][k] != coefficients[i][j + 1][k]) {
+						try {
+							if (selectedTrigger.getCoefficient(i,j,k) != selectedTrigger.getCoefficient(i,j + 1,k)) {
+								drawRight = true;
+							}
+						} catch (Exception e) {
 							drawRight = true;
 						}
-					} catch (Exception e) {
-						drawRight = true;
-					}
-					if (color != null) {
-						g.setColor(color);
-						int historyX = i / verticalTiles;
-						int historyY = i - historyX * verticalTiles;
-						int xBase = historyX * gridWidth + j * gridSize;
-						int yBase = historyY * gridHeight + k * gridSize;
-						if (drawTop) {
-							g.drawLine(xBase, yBase, xBase + gridSize - 1, yBase);
-						}
-						if (drawBottom) {
-							g.drawLine(xBase, yBase + gridSize -1, xBase + gridSize - 1, yBase + gridSize -1);
-						}
-						if (drawLeft) {
-							g.drawLine(xBase, yBase, xBase, yBase + gridSize -1);
-						}
-						if (drawRight) {
-							g.drawLine(xBase + gridSize -1, yBase, xBase + gridSize -1, yBase + gridSize -1);
+						if (color != null) {
+							g.setColor(color);
+							int historyX = i / verticalTiles;
+							int historyY = i - historyX * verticalTiles;
+							int xBase = historyX * gridWidth + j * gridSize;
+							int yBase = historyY * gridHeight + k * gridSize;
+							if (drawTop) {
+								g.drawLine(xBase, yBase, xBase + gridSize - 1, yBase);
+							}
+							if (drawBottom) {
+								g.drawLine(xBase, yBase + gridSize -1, xBase + gridSize - 1, yBase + gridSize -1);
+							}
+							if (drawLeft) {
+								g.drawLine(xBase, yBase, xBase, yBase + gridSize -1);
+							}
+							if (drawRight) {
+								g.drawLine(xBase + gridSize -1, yBase, xBase + gridSize -1, yBase + gridSize -1);
+							}
 						}
 					}
 				}
@@ -147,6 +158,8 @@ public class Main extends Component implements MouseListener {
 
 	public Main() {
 		this.addMouseListener(this);
+		selectedTrigger = new Trigger("Hello");
+		triggers.add(selectedTrigger);
 		loadImage();
 		new Thread(new Runnable() {
 
@@ -193,16 +206,6 @@ public class Main extends Component implements MouseListener {
 		}
 		verticalTiles = imageHeight / gridSize + 1;
 		horizontalTiles = imageWidth / gridSize + 1;
-		if (coefficients == null) {
-			coefficients = new int[HISTORTY_LENGTH][horizontalTiles][verticalTiles];
-			for (int i = 0; i < coefficients.length; i++) {
-				for (int j = 0; j < coefficients[i].length; j++) {
-					for (int k = 0; k < coefficients[j][j].length; k++) {
-						coefficients[i][j][k] = 0;
-					}
-				}
-			}
-		}
 	}
 	
 	private void calculateDifference() {
@@ -241,20 +244,6 @@ public class Main extends Component implements MouseListener {
 				}
 			}
 		}
-		value = 0;
-			for (int i = 0; i < coefficients.length; i++) {
-				if (aggregatedDifferences[i] != null) {
-					for (int j = 0; j < coefficients[i].length; j++) {
-						for (int k = 0; k < coefficients[i][j].length; k++) {
-							try {			
-								value += coefficients[i][j][k] * aggregatedDifferences[i][j][k];
-							}catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
-					}
-				}
-			}
 	}
 	
 	public Dimension getPreferredSize() {
@@ -308,7 +297,7 @@ public class Main extends Component implements MouseListener {
 	}
 
 	@Override
-	public void mouseClicked(MouseEvent e) {
+	public void mousePressed(MouseEvent e) {
 		Point p = e.getPoint();
 		
 		int gridWidth = gridSize * horizontalTiles;
@@ -319,24 +308,26 @@ public class Main extends Component implements MouseListener {
 		int historyIndex = historyX * verticalTiles + historyY;
 		int x = (p.x - historyX * gridWidth) / gridSize;
 		int y = (p.y - historyY * gridHeight)/ gridSize;
-		if (e.getButton() == MouseEvent.BUTTON1) {
-			if (coefficients[historyIndex][x][y] == 1) {
-				coefficients[historyIndex][x][y] = 0;
-			} else {
-				coefficients[historyIndex][x][y] = 1;
+		if (selectedTrigger != null) {
+			if (e.getButton() == MouseEvent.BUTTON1) {
+				if (selectedTrigger.getCoefficient(historyIndex, x, y) == 1) {
+					selectedTrigger.setCoefficient(historyIndex, x, y, 0);
+				} else {
+					selectedTrigger.setCoefficient(historyIndex, x, y, 1);
+				}
 			}
-		}
-		else if ((e.getButton() == MouseEvent.BUTTON2) || (e.getButton() == MouseEvent.BUTTON3)){
-			if (coefficients[historyIndex][x][y] == -1) {
-				coefficients[historyIndex][x][y] = 0;
-			} else {
-				coefficients[historyIndex][x][y] = -1;
+			else if ((e.getButton() == MouseEvent.BUTTON2) || (e.getButton() == MouseEvent.BUTTON3)){
+				if (selectedTrigger.getCoefficient(historyIndex, x, y) == -1) {
+					selectedTrigger.setCoefficient(historyIndex, x, y, 0);
+				} else {
+					selectedTrigger.setCoefficient(historyIndex, x, y, -1);
+				}
 			}
 		}
 		System.out.println("Click " + x + " " + y);
 	}
 
-	@Override public void mousePressed(MouseEvent e) {}
+	@Override public void mouseClicked(MouseEvent e) {}
 	@Override public void mouseReleased(MouseEvent e) {}
 	@Override public void mouseEntered(MouseEvent e) {}
 	@Override public void mouseExited(MouseEvent e) {}
