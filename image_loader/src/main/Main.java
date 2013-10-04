@@ -18,11 +18,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 
-public class Main extends Component implements MouseListener {
+public class Main extends Component implements MouseListener, ActionListener {
 	private static final long serialVersionUID = 4709581889925916389L;
 
 	private static final HashMap<Integer, Color> colors = new HashMap<Integer, Color>();
@@ -32,6 +37,10 @@ public class Main extends Component implements MouseListener {
 		}
 	}
 	private static final int HISTORTY_LENGTH = 30;
+
+	private static final String SAVE_TRIGGERS = null;
+
+	private static final String LOAD_TRIGGERS = null;
 	private BufferedImage img;
 	private int imageIndex = 0;
 	private BufferedImage[] imageRoundRobin = new BufferedImage[HISTORTY_LENGTH];
@@ -39,13 +48,62 @@ public class Main extends Component implements MouseListener {
 	private int[][][] aggregatedDifferences = new int[HISTORTY_LENGTH][][];
 	ArrayList<Trigger> triggers = new ArrayList<Trigger>();
 	Trigger selectedTrigger;
-	
+	Trigger firstTramIn = new Trigger("First tram in");
+	Trigger firstTramOut = new Trigger("First tram out");
+	Trigger firstTramLeaving = new Trigger("First tram leaving");
+	Trigger firstTramEntering = new Trigger("First tram entering");
+
+	Trigger secondTramIn = new Trigger("Second tram in");
+	Trigger secondTramOut = new Trigger("Second tram out");
+	Trigger secondTramLeaving = new Trigger("Second tram leaving");
+	Trigger secondTramEntering = new Trigger("Second tram entering");
+
 	int imageHeight;
 	int imageWidth;
 	int verticalTiles;
 	int horizontalTiles;
 	int gridSize = 12;
 	private boolean paused = false;
+
+	public Main() {
+		this.addMouseListener(this);
+		triggers.add(firstTramLeaving);
+		triggers.add(firstTramEntering);
+		triggers.add(firstTramIn);
+		triggers.add(firstTramOut);
+		triggers.add(secondTramEntering);
+		triggers.add(secondTramLeaving);
+		triggers.add(secondTramIn);
+		triggers.add(secondTramOut);
+		loadImage();
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					if (!paused) {
+						loadImage();
+						calculateDifference();
+						refreshTriggers();
+					}
+					invalidate();
+					repaint();
+					if (!paused) {
+						imageIndex++;
+						imageRoundRobinIndex ++;
+						if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
+							imageRoundRobinIndex = 0;
+						}
+					}
+				}
+			}
+		}).start();
+	}
 
 	public void paint(Graphics g) {
 		g.drawImage(img, 0, 0, null);
@@ -156,39 +214,6 @@ public class Main extends Component implements MouseListener {
 		}
 	}
 
-	public Main() {
-		this.addMouseListener(this);
-		selectedTrigger = new Trigger("Hello");
-		triggers.add(selectedTrigger);
-		loadImage();
-		new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					if (!paused) {
-						loadImage();
-						calculateDifference();
-					}
-					invalidate();
-					repaint();
-					if (!paused) {
-						imageIndex++;
-						imageRoundRobinIndex ++;
-						if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
-							imageRoundRobinIndex = 0;
-						}
-					}
-				}
-			}
-		}).start();
-	}
-
 	public void loadImage() {
 		try {
 			String formattedImageIndex = "" + imageIndex;
@@ -245,18 +270,34 @@ public class Main extends Component implements MouseListener {
 			}
 		}
 	}
-	
+
+	private void refreshTriggers() {
+		for (Trigger trigger : triggers) {
+			trigger.updateTrigger(aggregatedDifferences);
+		}
+	}
+
 	public Dimension getPreferredSize() {
 		if (img == null) {
-			return new Dimension(400, 800);
+			return new Dimension(500, 800);
 		} else {
-			return new Dimension(Math.max(400, img.getWidth(null) * 8), Math.max(
+			return new Dimension(Math.max(500, img.getWidth(null) * 8), Math.max(
 					400, img.getHeight(null) * 6));
 		}
 	}
 
 	public static void main(String[] args) {
 		JFrame f = new JFrame("Load Image Sample");
+		JMenuBar menuBar = new JMenuBar();
+		JMenu fileMenu = new JMenu("File");
+		JMenuItem saveTriggers = new JMenuItem("Save triggers");
+		saveTriggers.setActionCommand(SAVE_TRIGGERS);
+		JMenuItem loadTriggers = new JMenuItem("Load triggers");
+		loadTriggers.setActionCommand(LOAD_TRIGGERS);
+		fileMenu.add(saveTriggers);
+		fileMenu.add(loadTriggers);
+		menuBar.add(fileMenu);
+		f.setJMenuBar(menuBar);
 
 		f.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
@@ -266,7 +307,6 @@ public class Main extends Component implements MouseListener {
 		JPanel panel  = new JPanel();
 		f.setContentPane(panel);
 		final Main main = new Main();
-		panel.add(main);
 		JButton pp = new JButton("Play/Pause");
 		pp.addActionListener(new ActionListener() {
 			
@@ -275,7 +315,18 @@ public class Main extends Component implements MouseListener {
 				main.paused = !main.paused;
 			}
 		});
+		JPanel triggerSelectorPanel = new JPanel();
+		ButtonGroup buttonGroup = new ButtonGroup();
+		for (int i = 0; i < 8; i++) {
+			JRadioButton radioButton = new JRadioButton(main.triggers.get(i).getName());
+			buttonGroup.add(radioButton);
+			radioButton.setActionCommand("" + i);
+			radioButton.addActionListener(main);
+			triggerSelectorPanel.add(radioButton);
+		}
+		panel.add(triggerSelectorPanel);
 		panel.add(pp);
+		panel.add(main);
 		f.pack();
 		f.setVisible(true);
 	}
@@ -331,4 +382,10 @@ public class Main extends Component implements MouseListener {
 	@Override public void mouseReleased(MouseEvent e) {}
 	@Override public void mouseEntered(MouseEvent e) {}
 	@Override public void mouseExited(MouseEvent e) {}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		int index = Integer.parseInt(e.getActionCommand());
+		selectedTrigger = triggers.get(index);
+	}
 }
