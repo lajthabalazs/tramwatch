@@ -2,39 +2,27 @@ package main;
 
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
 import javax.imageio.ImageIO;
 
-public class Logic {
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.ObjectMapper;
+
+public class Logic implements ModelChangeListener {
 	private static final int HISTORTY_LENGTH = 30;
 
-	ArrayList<Trigger> triggers = new ArrayList<Trigger>();
-	Trigger firstTramIn = new Trigger("First tram in");
-	Trigger firstTramOut = new Trigger("First tram out");
-	Trigger firstTramLeaving = new Trigger("First tram leaving");
-	Trigger firstTramEntering = new Trigger("First tram entering");
-
-	Trigger secondTramIn = new Trigger("Second tram in");
-	Trigger secondTramOut = new Trigger("Second tram out");
-	Trigger secondTramLeaving = new Trigger("Second tram leaving");
-	Trigger secondTramEntering = new Trigger("Second tram entering");
+	HashMap<String, Trigger> triggers = new HashMap<String, Trigger>();
+	ArrayList<String> triggerNames = new ArrayList<String>();
 	
-	{
-		triggers.add(firstTramLeaving);
-		triggers.add(firstTramEntering);
-		triggers.add(firstTramIn);
-		triggers.add(firstTramOut);
-		triggers.add(secondTramEntering);
-		triggers.add(secondTramLeaving);
-		triggers.add(secondTramIn);
-		triggers.add(secondTramOut);
-	}
-
 	private BufferedImage img;
 
 	private int imageIndex = 0;
@@ -50,14 +38,50 @@ public class Logic {
 	
 	private HashSet<ModelChangeListener> listeners = new HashSet<ModelChangeListener>();
 
+	public Logic(){
+		Trigger firstTramIn = new Trigger("First tram in");
+		Trigger firstTramOut = new Trigger("First tram out");
+		Trigger firstTramLeaving = new Trigger("First tram leaving");
+		Trigger firstTramEntering = new Trigger("First tram entering");
+
+		Trigger secondTramIn = new Trigger("Second tram in");
+		Trigger secondTramOut = new Trigger("Second tram out");
+		Trigger secondTramLeaving = new Trigger("Second tram leaving");
+		Trigger secondTramEntering = new Trigger("Second tram entering");
+		triggerNames.add(firstTramLeaving.getName());
+		triggers.put(firstTramLeaving.getName(), firstTramLeaving);
+		triggerNames.add(firstTramEntering.getName());
+		triggers.put(firstTramEntering.getName(), firstTramEntering);
+		triggerNames.add(firstTramIn.getName());
+		triggers.put(firstTramIn.getName(), firstTramIn);
+		triggerNames.add(firstTramOut.getName());
+		triggers.put(firstTramOut.getName(), firstTramOut);
+
+		triggerNames.add(secondTramLeaving.getName());
+		triggers.put(secondTramLeaving.getName(), secondTramLeaving);
+		triggerNames.add(secondTramEntering.getName());
+		triggers.put(secondTramEntering.getName(), secondTramEntering);
+		triggerNames.add(secondTramIn.getName());
+		triggers.put(secondTramIn.getName(), secondTramIn);
+		triggerNames.add(secondTramOut.getName());
+		triggers.put(secondTramOut.getName(), secondTramOut);
+		for (Trigger trigger : triggers.values()) {
+			trigger.registerListener(this);
+		}
+	}
+	
 	public void refreshTriggers() {
-		for (Trigger trigger : triggers) {
+		for (Trigger trigger : triggers.values()) {
 			trigger.updateTrigger(aggregatedDifferences);
 		}
 	}
 
 	public List<Trigger> getTriggers() {
-		return new ArrayList<Trigger>(triggers); 
+		ArrayList<Trigger> triggers = new ArrayList<Trigger>();
+		for (String triggerName : triggerNames) {
+			triggers.add(this.triggers.get(triggerName));
+		}
+		return triggers;
 	}
 
 	public int getTriggerCount() {
@@ -84,7 +108,6 @@ public class Logic {
 				listener.modelChanged();
 			}
 		} catch (IOException e) {
-			System.out.println("Error loading image ");
 			e.printStackTrace();
 		}
 		verticalTiles = imageHeight / gridSize + 1;
@@ -179,5 +202,56 @@ public class Logic {
 	
 	public void unregisterListener(ModelChangeListener listener) {
 		listeners.remove(listener);
+	}
+
+	public void logTriggers() {
+		for (String triggerName : triggerNames) {
+			Trigger trigger = triggers.get(triggerName);
+			if (trigger.isActive()) {
+				System.out.println(imageIndex + " " + trigger.getName() + " ACTIVE " + trigger.getValue() + " (" + trigger.getRangeString() + ")");
+			}
+
+		}
+	}
+
+	public void exportToFile(File file) throws IOException {
+		System.out.println("Save to file " + file);
+		BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+		writer.write("{");
+		writer.write(String.format("%n"));
+		writer.write("\"triggers\":");
+		writer.write(String.format("%n"));
+		writer.write("[");
+		writer.write(String.format("%n"));
+		boolean first = true;
+		for (String triggerName : triggerNames) {
+			if (first) {
+				first = false;
+			} else {
+				writer.write(",");
+				writer.write(String.format("%n"));
+			}
+			Trigger trigger = triggers.get(triggerName);
+			writer.write(trigger.toJson());
+		}
+		writer.write(String.format("%n"));
+		writer.write("]");
+		writer.write(String.format("%n"));
+		writer.write("}");
+		writer.close();
+	}
+
+	public void loadFromFile(File file) throws JsonProcessingException, IOException {
+		System.out.println("Load from file " + file);
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode root = mapper.readTree(file);
+		
+	}
+
+	@Override
+	public void modelChanged() {
+		for (ModelChangeListener listener : listeners) {
+			listener.modelChanged();
+		}
 	}
 }

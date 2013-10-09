@@ -24,12 +24,18 @@ public class ImageGrid extends Component implements MouseListener {
 
 	private Trigger selectedTrigger;
 	
-	public ImageGrid(Logic logic) {
-		this.logic = logic;
+	public ImageGrid() {
 		this.addMouseListener(this);
+	}
+	
+	public void setLogic(Logic logic) {
+		this.logic = logic;
 	}
 
 	public void paint(Graphics g) {
+		if (logic == null) {
+			return;
+		}
 		Image image = logic.getImage();
 		g.drawImage(image, 0, 0, null);
 		g.setColor(Color.BLACK);
@@ -137,7 +143,7 @@ public class ImageGrid extends Component implements MouseListener {
 	}	
 
 	public Dimension getPreferredSize() {
-		if (logic.getImage() == null) {
+		if ((logic == null) || logic.getImage() == null) {
 			return new Dimension(500, 600);
 		} else {
 			return new Dimension(Math.max(500, logic.getImage().getWidth(null) * 8), Math.max(
@@ -148,7 +154,7 @@ public class ImageGrid extends Component implements MouseListener {
 
 	@Override
 	public void mousePressed(MouseEvent e) {
-		if (logic.getImage() == null) {
+		if ((logic == null) || logic.getImage() == null) {
 			return;
 		}
 		Point p = e.getPoint();

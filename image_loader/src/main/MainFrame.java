@@ -1,17 +1,19 @@
 package main;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -24,11 +26,10 @@ import javax.swing.JToggleButton;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.codehaus.jackson.JsonProcessingException;
+
 public class MainFrame extends JFrame implements ActionListener, ModelChangeListener {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 4102508633217679875L;
 
 	private static final String SAVE_TRIGGERS = "Save triggers";
@@ -38,28 +39,27 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	private HashMap<Trigger, JLabel> actualValueLabels = new HashMap<Trigger, JLabel>();
 	private HashMap<String, Trigger> triggers = new HashMap<String, Trigger>();
 	private Trigger selectedTrigger;
-	private boolean paused = true;
+	private boolean paused = true;	
 	
+	final JFileChooser fc = new JFileChooser();
 	
 	public MainFrame() {
 		super("Tram watch v0.1");
 		this.logic = new Logic();
 		logic.registerListener(this);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
-		for (Trigger trigger : logic.getTriggers()) {
-			trigger.registerListener(this);
-		}
 		
 		Container contentPane = getContentPane();
 		contentPane.setLayout(new BorderLayout());
 		JPanel triggerPanel = createTriggerPanel();
 		contentPane.add(triggerPanel,BorderLayout.SOUTH);
 		
-		imageGrid = new ImageGrid(logic);
+		imageGrid = new ImageGrid();
+		imageGrid.setLogic(logic);
 		contentPane.add(imageGrid, BorderLayout.CENTER);
 		
 		final JButton button = new JButton("Resume");
-		contentPane.add(button, BorderLayout.EAST);
+		contentPane.add(button, BorderLayout.WEST);
 		button.addActionListener(new ActionListener() {
 			
 			@Override
@@ -78,8 +78,10 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		JMenu fileMenu = new JMenu("File");
 		JMenuItem saveTriggers = new JMenuItem("Save triggers");
 		saveTriggers.setActionCommand(SAVE_TRIGGERS);
+		saveTriggers.addActionListener(this);
 		JMenuItem loadTriggers = new JMenuItem("Load triggers");
 		loadTriggers.setActionCommand(LOAD_TRIGGERS);
+		loadTriggers.addActionListener(this);
 		fileMenu.add(saveTriggers);
 		fileMenu.add(loadTriggers);
 		menuBar.add(fileMenu);
@@ -101,6 +103,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 					if (!paused) {
 						MainFrame.this.logic.loadImage();
 						MainFrame.this.logic.calculateDifference();
+						MainFrame.this.logic.logTriggers();
 					}
 					MainFrame.this.logic.refreshTriggers();
 					invalidate();
@@ -112,14 +115,14 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		selectedTrigger = logic.getTriggers().get(0);
 		imageGrid.setSelectedTrigger(selectedTrigger);
 	}
-	
 	private JPanel createTriggerPanel() {
 		JPanel triggerPanel = new JPanel();
 		List<Trigger> triggers = logic.getTriggers();
 		for (Trigger trigger : triggers) {
 			this.triggers.put(trigger.getName(), trigger);
 		}
-		triggerPanel.setLayout(new GridLayout(5, triggers.size()));
+		triggerPanel.setLayout(new GridLayout(5, triggers.size() + 1));
+		triggerPanel.add(new JLabel("Triggers"));
 		ButtonGroup buttonGroup = new ButtonGroup();
 		boolean first = true;
 		for (Trigger trigger : triggers) {
@@ -133,27 +136,11 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 			radioButton.addActionListener(this);
 			triggerPanel.add(radioButton);
 		}
-		for (Trigger trigger : triggers) {
-			final Trigger localTrigger = trigger;
-			final JTextField minThresholdEdit = new JTextField(10);
-			minThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
-				@Override public void removeUpdate(DocumentEvent e) { update();}
-				@Override public void insertUpdate(DocumentEvent e) {update();}
-				@Override public void changedUpdate(DocumentEvent e) {update();}
-				private void update() {
-					System.out.println(minThresholdEdit.getText());
-					try {
-						localTrigger.setMinThreshold(Integer.parseInt(minThresholdEdit.getText()));
-					} catch (Exception ex) {
-						System.out.println(minThresholdEdit.getText() + " " + ex);
-					}
-				}
-			});
-			triggerPanel.add(minThresholdEdit);
-		}
+		triggerPanel.add(new JLabel("Max"));
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JTextField maxThresholdEdit = new JTextField(10);
+			maxThresholdEdit.setText("" + localTrigger.getMaxThreshold());
 			maxThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
 				@Override public void removeUpdate(DocumentEvent e) { update();}
 				@Override public void insertUpdate(DocumentEvent e) {update();}
@@ -162,12 +149,30 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 					try {
 						localTrigger.setMaxThreshold(Integer.parseInt(maxThresholdEdit.getText()));
 					} catch (Exception ex) {
-						System.out.println("" + ex);
 					}
 				}
 			});
 			triggerPanel.add(maxThresholdEdit);
 		}
+		triggerPanel.add(new JLabel("Min"));
+		for (Trigger trigger : triggers) {
+			final Trigger localTrigger = trigger;
+			final JTextField minThresholdEdit = new JTextField(10);
+			minThresholdEdit.setText("" + localTrigger.getMinThreshold());
+			minThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
+				@Override public void removeUpdate(DocumentEvent e) { update();}
+				@Override public void insertUpdate(DocumentEvent e) {update();}
+				@Override public void changedUpdate(DocumentEvent e) {update();}
+				private void update() {
+					try {
+						localTrigger.setMinThreshold(Integer.parseInt(minThresholdEdit.getText()));
+					} catch (Exception ex) {
+					}
+				}
+			});
+			triggerPanel.add(minThresholdEdit);
+		}
+		triggerPanel.add(new JLabel("Range type"));
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JToggleButton toggleButton = new JToggleButton(localTrigger.isExternal()?"External":"Internal");
@@ -182,8 +187,10 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 			});
 			triggerPanel.add(toggleButton);
 		}
+		triggerPanel.add(new JLabel("Value"));
 		for (Trigger trigger : triggers) {
 			JLabel actualValueLabel = new JLabel("0");
+			actualValueLabel.setOpaque(true);
 			actualValueLabels .put(trigger, actualValueLabel);
 			triggerPanel.add(actualValueLabel);
 		}
@@ -191,22 +198,53 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		return triggerPanel;
 	}
 	
-	public static void main(String[] args) {
-		new MainFrame();
-	}
-
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		selectedTrigger = triggers.get(e.getActionCommand());
-		imageGrid.setSelectedTrigger(selectedTrigger);
+		if (e.getActionCommand().equals(LOAD_TRIGGERS)) {
+			// Show load dialog
+			int returnVal = fc.showOpenDialog(this);
+	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            File file = fc.getSelectedFile();
+	            // Save file
+	            try {
+					logic.loadFromFile(file);
+				} catch (JsonProcessingException e1) {
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+	        }
+		} else if (e.getActionCommand().equals(SAVE_TRIGGERS)) {
+			// Show save dialog
+			int returnVal = fc.showSaveDialog(this);
+	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            File file = fc.getSelectedFile();
+	            // Save file
+	            try {
+					logic.exportToFile(file);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+	        }
+		} else {
+			selectedTrigger = triggers.get(e.getActionCommand());
+			imageGrid.setSelectedTrigger(selectedTrigger);
+		}
 	}
-
 
 	@Override
 	public void modelChanged() {
 		// Refresh triggers
 		for (Trigger trigger : triggers.values()) {
 			actualValueLabels.get(trigger).setText("" + trigger.getValue());
+			if (trigger.isActive()) {
+				actualValueLabels.get(trigger).setBackground(Color.green);
+			} else {
+				actualValueLabels.get(trigger).setBackground(Color.yellow);
+			}
 		}
+	}
+	public static void main(String[] args) {
+		new MainFrame();
 	}
 }

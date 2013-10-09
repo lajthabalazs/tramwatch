@@ -6,20 +6,19 @@ import java.util.HashSet;
 public class Trigger {
 	HashMap<Integer, HashMap<Integer, HashMap<Integer, Integer>>> coefficients = new HashMap<Integer, HashMap<Integer,HashMap<Integer,Integer>>>();
 	private String name;
-	private int minThreshold;
-	private int maxThreshold;
+	private int minThreshold = 0;
+	private int maxThreshold = 0;
 	private boolean external = false;
 	
 	private HashSet<ModelChangeListener> listeners = new HashSet<ModelChangeListener>();
 	
-	private int value = 0;
+	private double value = 0;
 	
 	public Trigger(String name) {
 		this.name = name;
 	}
 	
-	public void setCoefficient(int image, int x, int y, int value) {
-		System.out.println("Set coeff " + image + " " + x + " " + y + " " + value );
+	synchronized public void setCoefficient(int image, int x, int y, int value) {
 		if (value == 0) {
 			HashMap<Integer, HashMap<Integer, Integer>> imageCoefficients = coefficients.get(image);
 			if (imageCoefficients == null) {
@@ -68,14 +67,21 @@ public class Trigger {
 		}
 	}
 	
-	public void updateTrigger(int[][][] aggregatedDifferences){
-		value = 0;
+	synchronized public void updateTrigger(int[][][] aggregatedDifferences){
+		value = 0.0;
+		int total = 0;
 		for (Integer imageKey : coefficients.keySet()) {
 			for (Integer columnKey : coefficients.get(imageKey).keySet()) {
 				for (Integer rowKey : coefficients.get(imageKey).get(columnKey).keySet()) {
 					value += aggregatedDifferences[imageKey][columnKey][rowKey] * coefficients.get(imageKey).get(columnKey).get(rowKey);
+					total += Math.max(0,coefficients.get(imageKey).get(columnKey).get(rowKey));
 				}
 			}
+		}
+		if (total == 0) {
+			value = 0;
+		} else {
+			value = value / total;
 		}
 	}
 	
@@ -98,7 +104,7 @@ public class Trigger {
 		}
 	}
 	
-	public int getValue() {
+	public double getValue() {
 		return value;
 	}
 
@@ -169,5 +175,13 @@ public class Trigger {
 	
 	public void unregisterListener(ModelChangeListener listener) {
 		listeners.remove(listener);
+	}
+
+	public String getRangeString() {
+		if (external) {
+			return "x ] " + minThreshold + "," + maxThreshold + "[ x"; 
+		} else {
+			return minThreshold + "[ x ]" + maxThreshold;
+		}
 	}
 }
