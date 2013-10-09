@@ -111,4 +111,38 @@ public class Trigger {
 	public void setMaxThreshold(int maxThreshold) {
 		this.maxThreshold = maxThreshold;
 	}
+	
+	public String toJson(){
+		StringBuilder builder = new StringBuilder();
+		builder.append("{\n");
+		builder.append("\"name\":");
+		builder.append("\"");
+		builder.append(name);
+		builder.append("\"");
+		builder.append(",\n");
+		builder.append("\"coefficients\":\n");
+		builder.append("[\n");
+		for (Integer imageKey : coefficients.keySet()) {
+			for (Integer columnKey : coefficients.get(imageKey).keySet()) {
+				for (Integer rowKey : coefficients.get(imageKey).get(columnKey).keySet()) {
+					builder.append("{");
+					builder.append("\"image\":");
+					builder.append(imageKey);
+					builder.append(",");
+					builder.append("\"x\":");
+					builder.append(columnKey);
+					builder.append(",");
+					builder.append("\"y\":");
+					builder.append(rowKey);
+					builder.append(",");
+					builder.append("\"c\":");
+					builder.append(coefficients.get(imageKey).get(columnKey).get(rowKey));
+					builder.append("}");
+				}
+			}
+		}
+		builder.append("]\n");
+		builder.append("}");
+		return builder.toString();
+	}
 }

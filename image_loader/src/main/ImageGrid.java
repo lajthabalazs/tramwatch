@@ -5,29 +5,16 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
-import javax.swing.ButtonGroup;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 
-public class Main extends Component implements MouseListener, ActionListener {
+public class ImageGrid extends Component implements MouseListener {
 	private static final long serialVersionUID = 4709581889925916389L;
 
 	private static final HashMap<Integer, Color> colors = new HashMap<Integer, Color>();
@@ -38,25 +25,11 @@ public class Main extends Component implements MouseListener, ActionListener {
 	}
 	private static final int HISTORTY_LENGTH = 30;
 
-	private static final String SAVE_TRIGGERS = null;
-
-	private static final String LOAD_TRIGGERS = null;
 	private BufferedImage img;
 	private int imageIndex = 0;
 	private BufferedImage[] imageRoundRobin = new BufferedImage[HISTORTY_LENGTH];
 	int imageRoundRobinIndex = 0;
 	private int[][][] aggregatedDifferences = new int[HISTORTY_LENGTH][][];
-	ArrayList<Trigger> triggers = new ArrayList<Trigger>();
-	Trigger selectedTrigger;
-	Trigger firstTramIn = new Trigger("First tram in");
-	Trigger firstTramOut = new Trigger("First tram out");
-	Trigger firstTramLeaving = new Trigger("First tram leaving");
-	Trigger firstTramEntering = new Trigger("First tram entering");
-
-	Trigger secondTramIn = new Trigger("Second tram in");
-	Trigger secondTramOut = new Trigger("Second tram out");
-	Trigger secondTramLeaving = new Trigger("Second tram leaving");
-	Trigger secondTramEntering = new Trigger("Second tram entering");
 
 	int imageHeight;
 	int imageWidth;
@@ -65,16 +38,13 @@ public class Main extends Component implements MouseListener, ActionListener {
 	int gridSize = 12;
 	private boolean paused = false;
 
-	public Main() {
+	private Logic logic;
+
+	private Trigger selectedTrigger;
+	
+	public ImageGrid(Logic logic) {
+		this.logic = logic;
 		this.addMouseListener(this);
-		triggers.add(firstTramLeaving);
-		triggers.add(firstTramEntering);
-		triggers.add(firstTramIn);
-		triggers.add(firstTramOut);
-		triggers.add(secondTramEntering);
-		triggers.add(secondTramLeaving);
-		triggers.add(secondTramIn);
-		triggers.add(secondTramOut);
 		loadImage();
 		new Thread(new Runnable() {
 
@@ -89,7 +59,7 @@ public class Main extends Component implements MouseListener, ActionListener {
 					if (!paused) {
 						loadImage();
 						calculateDifference();
-						refreshTriggers();
+						ImageGrid.this.logic.refreshTriggers(aggregatedDifferences);
 					}
 					invalidate();
 					repaint();
@@ -213,7 +183,7 @@ public class Main extends Component implements MouseListener, ActionListener {
 			}
 		}
 	}
-
+	
 	public void loadImage() {
 		try {
 			String formattedImageIndex = "" + imageIndex;
@@ -271,12 +241,6 @@ public class Main extends Component implements MouseListener, ActionListener {
 		}
 	}
 
-	private void refreshTriggers() {
-		for (Trigger trigger : triggers) {
-			trigger.updateTrigger(aggregatedDifferences);
-		}
-	}
-
 	public Dimension getPreferredSize() {
 		if (img == null) {
 			return new Dimension(500, 800);
@@ -284,51 +248,6 @@ public class Main extends Component implements MouseListener, ActionListener {
 			return new Dimension(Math.max(500, img.getWidth(null) * 8), Math.max(
 					400, img.getHeight(null) * 6));
 		}
-	}
-
-	public static void main(String[] args) {
-		JFrame f = new JFrame("Load Image Sample");
-		JMenuBar menuBar = new JMenuBar();
-		JMenu fileMenu = new JMenu("File");
-		JMenuItem saveTriggers = new JMenuItem("Save triggers");
-		saveTriggers.setActionCommand(SAVE_TRIGGERS);
-		JMenuItem loadTriggers = new JMenuItem("Load triggers");
-		loadTriggers.setActionCommand(LOAD_TRIGGERS);
-		fileMenu.add(saveTriggers);
-		fileMenu.add(loadTriggers);
-		menuBar.add(fileMenu);
-		f.setJMenuBar(menuBar);
-
-		f.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
-		JPanel panel  = new JPanel();
-		f.setContentPane(panel);
-		final Main main = new Main();
-		JButton pp = new JButton("Play/Pause");
-		pp.addActionListener(new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				main.paused = !main.paused;
-			}
-		});
-		JPanel triggerSelectorPanel = new JPanel();
-		ButtonGroup buttonGroup = new ButtonGroup();
-		for (int i = 0; i < 8; i++) {
-			JRadioButton radioButton = new JRadioButton(main.triggers.get(i).getName());
-			buttonGroup.add(radioButton);
-			radioButton.setActionCommand("" + i);
-			radioButton.addActionListener(main);
-			triggerSelectorPanel.add(radioButton);
-		}
-		panel.add(triggerSelectorPanel);
-		panel.add(pp);
-		panel.add(main);
-		f.pack();
-		f.setVisible(true);
 	}
 
 	private static int[][][] getPixelData(BufferedImage image,
@@ -383,9 +302,8 @@ public class Main extends Component implements MouseListener, ActionListener {
 	@Override public void mouseEntered(MouseEvent e) {}
 	@Override public void mouseExited(MouseEvent e) {}
 
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		int index = Integer.parseInt(e.getActionCommand());
-		selectedTrigger = triggers.get(index);
+	public void setSelectedTrigger(Trigger selectedTrigger) {
+		this.selectedTrigger = selectedTrigger;
+		
 	}
 }
