@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -20,8 +21,10 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
-public class MainFrame extends JFrame implements ActionListener {
+public class MainFrame extends JFrame implements ActionListener, ModelChangeListener {
 	
 	/**
 	 * 
@@ -35,12 +38,17 @@ public class MainFrame extends JFrame implements ActionListener {
 	private HashMap<Trigger, JLabel> actualValueLabels = new HashMap<Trigger, JLabel>();
 	private HashMap<String, Trigger> triggers = new HashMap<String, Trigger>();
 	private Trigger selectedTrigger;
+	private boolean paused = true;
 	
 	
-	public MainFrame(Logic logic) {
+	public MainFrame() {
 		super("Tram watch v0.1");
-		this.logic = logic;
+		this.logic = new Logic();
+		logic.registerListener(this);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		for (Trigger trigger : logic.getTriggers()) {
+			trigger.registerListener(this);
+		}
 		
 		Container contentPane = getContentPane();
 		contentPane.setLayout(new BorderLayout());
@@ -50,6 +58,21 @@ public class MainFrame extends JFrame implements ActionListener {
 		imageGrid = new ImageGrid(logic);
 		contentPane.add(imageGrid, BorderLayout.CENTER);
 		
+		final JButton button = new JButton("Resume");
+		contentPane.add(button, BorderLayout.EAST);
+		button.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (paused) {
+					button.setText("Pause");
+					paused = false;
+				} else {
+					button.setText("Resume");
+					paused = true;
+				}
+			}
+		});
 		// Menu bar
 		JMenuBar menuBar = new JMenuBar();
 		JMenu fileMenu = new JMenu("File");
@@ -64,6 +87,30 @@ public class MainFrame extends JFrame implements ActionListener {
 		
 		pack();
 		setVisible(true);
+		new Thread(new Runnable() {
+
+
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					if (!paused) {
+						MainFrame.this.logic.loadImage();
+						MainFrame.this.logic.calculateDifference();
+					}
+					MainFrame.this.logic.refreshTriggers();
+					invalidate();
+					repaint();
+				}
+			}
+		}).start();
+		
+		selectedTrigger = logic.getTriggers().get(0);
+		imageGrid.setSelectedTrigger(selectedTrigger);
 	}
 	
 	private JPanel createTriggerPanel() {
@@ -74,8 +121,13 @@ public class MainFrame extends JFrame implements ActionListener {
 		}
 		triggerPanel.setLayout(new GridLayout(5, triggers.size()));
 		ButtonGroup buttonGroup = new ButtonGroup();
+		boolean first = true;
 		for (Trigger trigger : triggers) {
 			JRadioButton radioButton = new JRadioButton(trigger.getName());
+			if (first) {
+				first = false;
+				radioButton.setSelected(true);
+			}
 			buttonGroup.add(radioButton);
 			radioButton.setActionCommand(trigger.getName());
 			radioButton.addActionListener(this);
@@ -84,32 +136,35 @@ public class MainFrame extends JFrame implements ActionListener {
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JTextField minThresholdEdit = new JTextField(10);
-			minThresholdEdit.addKeyListener(new KeyListener() {
-				@Override public void keyTyped(KeyEvent e) {
+			minThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
+				@Override public void removeUpdate(DocumentEvent e) { update();}
+				@Override public void insertUpdate(DocumentEvent e) {update();}
+				@Override public void changedUpdate(DocumentEvent e) {update();}
+				private void update() {
+					System.out.println(minThresholdEdit.getText());
 					try {
 						localTrigger.setMinThreshold(Integer.parseInt(minThresholdEdit.getText()));
 					} catch (Exception ex) {
-						System.out.println("" + ex);
+						System.out.println(minThresholdEdit.getText() + " " + ex);
 					}
 				}
-				@Override public void keyReleased(KeyEvent e) {}
-				@Override public void keyPressed(KeyEvent e) {}
 			});
 			triggerPanel.add(minThresholdEdit);
 		}
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JTextField maxThresholdEdit = new JTextField(10);
-			maxThresholdEdit.addKeyListener(new KeyListener() {
-				@Override public void keyTyped(KeyEvent e) {
+			maxThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
+				@Override public void removeUpdate(DocumentEvent e) { update();}
+				@Override public void insertUpdate(DocumentEvent e) {update();}
+				@Override public void changedUpdate(DocumentEvent e) {update();}
+				private void update() {
 					try {
 						localTrigger.setMaxThreshold(Integer.parseInt(maxThresholdEdit.getText()));
 					} catch (Exception ex) {
 						System.out.println("" + ex);
 					}
 				}
-				@Override public void keyReleased(KeyEvent e) {}
-				@Override public void keyPressed(KeyEvent e) {}
 			});
 			triggerPanel.add(maxThresholdEdit);
 		}
@@ -137,12 +192,21 @@ public class MainFrame extends JFrame implements ActionListener {
 	}
 	
 	public static void main(String[] args) {
-		new MainFrame(new Logic());
+		new MainFrame();
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		selectedTrigger = triggers.get(e.getActionCommand());
 		imageGrid.setSelectedTrigger(selectedTrigger);
+	}
+
+
+	@Override
+	public void modelChanged() {
+		// Refresh triggers
+		for (Trigger trigger : triggers.values()) {
+			actualValueLabels.get(trigger).setText("" + trigger.getValue());
+		}
 	}
 }

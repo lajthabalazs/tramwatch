@@ -1,6 +1,7 @@
 package main;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class Trigger {
 	HashMap<Integer, HashMap<Integer, HashMap<Integer, Integer>>> coefficients = new HashMap<Integer, HashMap<Integer,HashMap<Integer,Integer>>>();
@@ -9,13 +10,16 @@ public class Trigger {
 	private int maxThreshold;
 	private boolean external = false;
 	
-	private int value;
+	private HashSet<ModelChangeListener> listeners = new HashSet<ModelChangeListener>();
+	
+	private int value = 0;
 	
 	public Trigger(String name) {
 		this.name = name;
 	}
 	
 	public void setCoefficient(int image, int x, int y, int value) {
+		System.out.println("Set coeff " + image + " " + x + " " + y + " " + value );
 		if (value == 0) {
 			HashMap<Integer, HashMap<Integer, Integer>> imageCoefficients = coefficients.get(image);
 			if (imageCoefficients == null) {
@@ -26,6 +30,9 @@ public class Trigger {
 				return;
 			}
 			columnCoefficients.remove(y);
+			for (ModelChangeListener listener : listeners) {
+				listener.modelChanged();
+			}
 			if (columnCoefficients.size() == 0) {
 				imageCoefficients.remove(columnCoefficients);
 				if (imageCoefficients.size() == 0) {
@@ -37,11 +44,17 @@ public class Trigger {
 			if (imageCoefficients == null) {
 				imageCoefficients = new HashMap<Integer, HashMap<Integer,Integer>>();
 				coefficients.put(image, imageCoefficients);
+				for (ModelChangeListener listener : listeners) {
+					listener.modelChanged();
+				}
 			}
 			HashMap<Integer, Integer> columnCoefficients = imageCoefficients.get(x);
 			if (columnCoefficients == null) {
 				columnCoefficients = new HashMap<Integer, Integer>();
 				imageCoefficients.put(x, columnCoefficients);
+				for (ModelChangeListener listener : listeners) {
+					listener.modelChanged();
+				}
 			}
 			columnCoefficients.put(y, value);
 		}
@@ -57,16 +70,10 @@ public class Trigger {
 	
 	public void updateTrigger(int[][][] aggregatedDifferences){
 		value = 0;
-		for (int i = 0; i < aggregatedDifferences.length; i++) {
-			if (aggregatedDifferences[i] != null) {
-				for (int j = 0; j < aggregatedDifferences[i].length; j++) {
-					for (int k = 0; k < aggregatedDifferences[i][j].length; k++) {
-						try {			
-							value += aggregatedDifferences[i][j][k] * aggregatedDifferences[i][j][k];
-						}catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
+		for (Integer imageKey : coefficients.keySet()) {
+			for (Integer columnKey : coefficients.get(imageKey).keySet()) {
+				for (Integer rowKey : coefficients.get(imageKey).get(columnKey).keySet()) {
+					value += aggregatedDifferences[imageKey][columnKey][rowKey] * coefficients.get(imageKey).get(columnKey).get(rowKey);
 				}
 			}
 		}
@@ -78,6 +85,9 @@ public class Trigger {
 
 	public void setExternal(boolean external) {
 		this.external = external;
+		for (ModelChangeListener listener : listeners) {
+			listener.modelChanged();
+		}
 	}
 
 	public boolean isActive(){
@@ -102,6 +112,10 @@ public class Trigger {
 
 	public void setMinThreshold(int minThreshold) {
 		this.minThreshold = minThreshold;
+		for (ModelChangeListener listener : listeners) {
+			listener.modelChanged();
+		}
+
 	}
 
 	public int getMaxThreshold() {
@@ -110,6 +124,9 @@ public class Trigger {
 
 	public void setMaxThreshold(int maxThreshold) {
 		this.maxThreshold = maxThreshold;
+		for (ModelChangeListener listener : listeners) {
+			listener.modelChanged();
+		}
 	}
 	
 	public String toJson(){
@@ -144,5 +161,13 @@ public class Trigger {
 		builder.append("]\n");
 		builder.append("}");
 		return builder.toString();
+	}
+
+	public void registerListener(ModelChangeListener listener) {
+		listeners.add(listener);
+	}
+	
+	public void unregisterListener(ModelChangeListener listener) {
+		listeners.remove(listener);
 	}
 }

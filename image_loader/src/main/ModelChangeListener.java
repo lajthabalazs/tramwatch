@@ -1,5 +1,5 @@
 package main;
 
 public interface ModelChangeListener {
-	public void selectedTriggerChanged();
+	public void modelChanged();
 }
