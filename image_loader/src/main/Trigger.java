@@ -156,9 +156,15 @@ public class Trigger {
 		builder.append(",\n");
 		builder.append("\"coefficients\":\n");
 		builder.append("[\n");
+		boolean first = true;
 		for (Integer imageKey : coefficients.keySet()) {
 			for (Integer columnKey : coefficients.get(imageKey).keySet()) {
 				for (Integer rowKey : coefficients.get(imageKey).get(columnKey).keySet()) {
+					if (first) {
+						first = false;
+					} else {
+						builder.append(",\n");
+					}
 					builder.append("{");
 					builder.append("\"image\":");
 					builder.append(imageKey);
@@ -197,10 +203,19 @@ public class Trigger {
 	}
 
 	public static Trigger parseFromJson(JsonNode triggerNode) {
+		System.out.println("Parsing json trigger");
 		Trigger trigger = new Trigger(triggerNode.get("name").getTextValue());
 		trigger.setMinThreshold(triggerNode.get("minThreshold").getIntValue());
 		trigger.setMaxThreshold(triggerNode.get("maxThreshold").getIntValue());
-		System.out.println("Parsed trigger " + trigger.minThreshold + " " + trigger.maxThreshold);
+		JsonNode coefficients = triggerNode.get("coefficients");
+		for (JsonNode coeffNode : coefficients) {
+			System.out.println("Parsing json coefficient");
+			trigger.setCoefficient(coeffNode.get("image").getIntValue(),
+					coeffNode.get("x").getIntValue(),
+					coeffNode.get("y").getIntValue(),
+					coeffNode.get("c").getIntValue());
+		}
+		
 		return trigger;
 	}
 }

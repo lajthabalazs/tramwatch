@@ -114,7 +114,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		}).start();
 		
 		selectedTrigger = logic.getTriggers().get(0);
-		imageGrid.setSelectedTrigger(selectedTrigger);
+		imageGrid.setSelectedTrigger(selectedTrigger.getName());
 		logic.registerListener(this);
 	}
 
@@ -236,13 +236,12 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	        }
 		} else {
 			selectedTrigger = logic.getTrigger(e.getActionCommand());
-			imageGrid.setSelectedTrigger(selectedTrigger);
+			imageGrid.setSelectedTrigger(selectedTrigger.getName());
 		}
 	}
 
 	@Override
 	public void modelChanged() {
-		System.out.println("Model changed");
 		// Refresh triggers
 		List<Trigger> triggers = logic.getTriggers();
 		for (Trigger trigger : triggers) {

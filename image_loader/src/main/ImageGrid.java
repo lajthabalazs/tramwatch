@@ -22,8 +22,8 @@ public class ImageGrid extends Component implements MouseListener {
 
 	private Logic logic;
 
-	private Trigger selectedTrigger;
-	
+	private String selectedTriggerName;
+
 	public ImageGrid() {
 		this.addMouseListener(this);
 	}
@@ -71,6 +71,7 @@ public class ImageGrid extends Component implements MouseListener {
 		g.setColor(Color.black);
 		// Draw borders
 		Color color = null;
+		Trigger selectedTrigger = logic.getTrigger(selectedTriggerName);
 		if (selectedTrigger != null) {
 			for (int i = 0; i < logic.getHistoryLength(); i++) {
 				if (!logic.hasDifference(i)) {
@@ -167,6 +168,7 @@ public class ImageGrid extends Component implements MouseListener {
 		int historyIndex = historyX * logic.getVerticalTiles() + historyY;
 		int x = (p.x - historyX * gridWidth) / logic.getGridSize();
 		int y = (p.y - historyY * gridHeight)/ logic.getGridSize();
+		Trigger selectedTrigger = logic.getTrigger(selectedTriggerName);		
 		if (selectedTrigger != null) {
 			if (e.getButton() == MouseEvent.BUTTON1) {
 				if (selectedTrigger.getCoefficient(historyIndex, x, y) == 1) {
@@ -190,8 +192,8 @@ public class ImageGrid extends Component implements MouseListener {
 	@Override public void mouseEntered(MouseEvent e) {}
 	@Override public void mouseExited(MouseEvent e) {}
 
-	public void setSelectedTrigger(Trigger selectedTrigger) {
-		this.selectedTrigger = selectedTrigger;
+	public void setSelectedTrigger(String selectedTriggerName) {
+		this.selectedTriggerName = selectedTriggerName;
 		
 	}
 }
