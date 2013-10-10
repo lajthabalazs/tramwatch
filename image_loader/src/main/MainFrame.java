@@ -25,6 +25,7 @@ import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileFilter;
 
 import org.codehaus.jackson.JsonProcessingException;
 
@@ -40,13 +41,28 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	private Trigger selectedTrigger;
 	private boolean paused = true;	
 	
-	final JFileChooser fc = new JFileChooser();
+	final JFileChooser fc;
 
 	private HashMap<String, JTextField> minThresholdEdits = new HashMap<String, JTextField>();
 	private HashMap<String, JTextField> maxThresholdEdits = new HashMap<String, JTextField>();
 	
 	public MainFrame() {
 		super("Tram watch v0.1");
+		fc = new JFileChooser(new File("triggers"));
+		fc.addChoosableFileFilter(new FileFilter() {
+			
+			@Override
+			public String getDescription() {
+				return "JSON based description files.";
+			}
+			
+			@Override
+			public boolean accept(File f) {
+				String[] parts = f.getName().split("\\.");
+				return parts[parts.length - 1].toLowerCase().equals("json");
+			}
+		});
+		
 		this.logic = new Logic();
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		
@@ -227,6 +243,9 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 			int returnVal = fc.showSaveDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
 	            File file = fc.getSelectedFile();
+	            if (!file.getName().toLowerCase().endsWith(".json")) {
+	            	file = new File(file.getAbsolutePath() + ".json");
+	            }
 	            // Save file
 	            try {
 					logic.exportToFile(file);
