@@ -233,6 +233,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 					trigger.setMaxThreshold(newMax);
 				}
 			} catch (Exception ex) {
+				maxThresholdEdit.setText("" + trigger.getMaxThreshold());
 			}
 		} else if (e.getActionCommand().startsWith("MIN")){
 			String triggerName = e.getActionCommand().substring(3);
@@ -244,6 +245,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 					trigger.setMinThreshold(newMin);
 				}
 			} catch (Exception ex) {
+				minThresholdEdit.setText("" + trigger.getMinThreshold());
 			}
 		} else {
 			imageGrid.setSelectedTrigger(logic.getTrigger(e.getActionCommand()).getName());
