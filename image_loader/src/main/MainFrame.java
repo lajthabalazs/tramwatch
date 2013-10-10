@@ -33,33 +33,45 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 
 	private static final String SAVE_TRIGGERS = "Save triggers";
 	private static final String LOAD_TRIGGERS = "Load triggers";
+
+	private static final String LOAD_IMAGES = "Load images";
 	private Logic logic;
 	private ImageGrid imageGrid;
 	private HashMap<String, JLabel> actualValueLabels = new HashMap<String, JLabel>();
 	private boolean paused = true;	
 	
-	final JFileChooser fc;
+	final JFileChooser triggerFileChooser;
+	final JFileChooser imageFolderChooser;
 
 	private HashMap<String, JTextField> minThresholdEdits = new HashMap<String, JTextField>();
 	private HashMap<String, JTextField> maxThresholdEdits = new HashMap<String, JTextField>();
 	
 	public MainFrame() {
 		super("Tram watch v0.1");
-		fc = new JFileChooser(new File("triggers"));
-		fc.addChoosableFileFilter(new FileFilter() {
+		triggerFileChooser = new JFileChooser(new File("triggers"));
+		triggerFileChooser.addChoosableFileFilter(new FileFilter() {
 			
-			@Override
-			public String getDescription() {
-				return "JSON based description files.";
-			}
+			@Override public String getDescription() { return "JSON based description files."; }
 			
 			@Override
 			public boolean accept(File f) {
+				if (f.isDirectory()) {
+					return true;
+				}
 				String[] parts = f.getName().split("\\.");
 				return parts[parts.length - 1].toLowerCase().equals("json");
 			}
 		});
-		
+		imageFolderChooser = new JFileChooser();
+		imageFolderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		imageFolderChooser.addChoosableFileFilter(new FileFilter() {
+			@Override public String getDescription() { return "Image directories."; }
+			
+			@Override
+			public boolean accept(File f) {
+				return f.isDirectory();
+			}
+		});
 		this.logic = new Logic();
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		
@@ -90,12 +102,16 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		// Menu bar
 		JMenuBar menuBar = new JMenuBar();
 		JMenu fileMenu = new JMenu("File");
+		JMenuItem loadImages = new JMenuItem("Load images");
+		loadImages.setActionCommand(LOAD_IMAGES);
+		loadImages.addActionListener(this);
 		JMenuItem saveTriggers = new JMenuItem("Save triggers");
 		saveTriggers.setActionCommand(SAVE_TRIGGERS);
 		saveTriggers.addActionListener(this);
 		JMenuItem loadTriggers = new JMenuItem("Load triggers");
 		loadTriggers.setActionCommand(LOAD_TRIGGERS);
 		loadTriggers.addActionListener(this);
+		fileMenu.add(loadImages);
 		fileMenu.add(saveTriggers);
 		fileMenu.add(loadTriggers);
 		menuBar.add(fileMenu);
@@ -194,11 +210,19 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		if (e.getActionCommand().equals(LOAD_TRIGGERS)) {
+		if (e.getActionCommand().equals(LOAD_IMAGES)) {
 			// Show load dialog
-			int returnVal = fc.showOpenDialog(this);
+			int returnVal = imageFolderChooser.showOpenDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
-	            File file = fc.getSelectedFile();
+	            File file = imageFolderChooser.getSelectedFile();
+	            // Save file
+				logic.setImageSourceDirectory(file);
+	        }
+		} else if (e.getActionCommand().equals(LOAD_TRIGGERS)) {
+			// Show load dialog
+			int returnVal = triggerFileChooser.showOpenDialog(this);
+	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            File file = triggerFileChooser.getSelectedFile();
 	            // Save file
 	            try {
 					logic.loadFromFile(file);
@@ -210,9 +234,9 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	        }
 		} else if (e.getActionCommand().equals(SAVE_TRIGGERS)) {
 			// Show save dialog
-			int returnVal = fc.showSaveDialog(this);
+			int returnVal = triggerFileChooser.showSaveDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
-	            File file = fc.getSelectedFile();
+	            File file = triggerFileChooser.getSelectedFile();
 	            if (!file.getName().toLowerCase().endsWith(".json")) {
 	            	file = new File(file.getAbsolutePath() + ".json");
 	            }

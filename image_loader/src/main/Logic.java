@@ -24,6 +24,7 @@ public class Logic implements ModelChangeListener {
 	ArrayList<String> triggerNames = new ArrayList<String>();
 	
 	private BufferedImage img;
+	private File imageSourceDirectory = null;
 
 	private int imageIndex = 0;
 	private BufferedImage[] imageRoundRobin = new BufferedImage[HISTORTY_LENGTH];
@@ -88,27 +89,38 @@ public class Logic implements ModelChangeListener {
 		return triggers.size();
 	}
 	
+	public void setImageSourceDirectory(File imageSourceDirectory) {
+		this.imageSourceDirectory = imageSourceDirectory;
+		imageIndex = 0;
+		imageRoundRobinIndex = 0;
+	}
+	
 	public void loadImage() {
+		if (imageSourceDirectory == null) {
+			return;
+		}
+		String formattedImageIndex = "" + imageIndex;
+		while (formattedImageIndex.length() < 5) {
+			formattedImageIndex = "0" + formattedImageIndex;
+		}
+		File f = new File(imageSourceDirectory, "frame" + formattedImageIndex + ".png");
 		try {
-			String formattedImageIndex = "" + imageIndex;
-			while (formattedImageIndex.length() < 5) {
-				formattedImageIndex = "0" + formattedImageIndex;
-			}
-			img = ImageIO.read(new File("f:\\crowd\\small\\frame"
-					+ formattedImageIndex + ".png"));
-			imageRoundRobin[imageRoundRobinIndex] = img;
-			imageWidth = img.getWidth();
-			imageHeight = img.getHeight();
-			imageIndex++;
-			imageRoundRobinIndex ++;
-			if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
-				imageRoundRobinIndex = 0;
-			}
-			for (ModelChangeListener listener : listeners) {
-				listener.modelChanged();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+			
+			img = ImageIO.read(f);
+		} catch (Exception e){
+			System.out.println(f.toString() + " : " + e);
+			return;
+		}
+		imageRoundRobin[imageRoundRobinIndex] = img;
+		imageWidth = img.getWidth();
+		imageHeight = img.getHeight();
+		imageIndex++;
+		imageRoundRobinIndex ++;
+		if (imageRoundRobinIndex >= HISTORTY_LENGTH) {
+			imageRoundRobinIndex = 0;
+		}
+		for (ModelChangeListener listener : listeners) {
+			listener.modelChanged();
 		}
 		verticalTiles = imageHeight / gridSize + 1;
 		horizontalTiles = imageWidth / gridSize + 1;
@@ -117,6 +129,9 @@ public class Logic implements ModelChangeListener {
 	public void calculateDifference() {
 		// Calculate and store differences between current image and last 29 images
 		int[][][] currentPixelData = getPixelData(img, 0, 0, imageWidth, imageHeight);
+		if (currentPixelData == null) {
+			return;
+		}
 		for (int i = 1; i < HISTORTY_LENGTH; i++) {
 			int roundRobinItemIndex = imageRoundRobinIndex - i;
 			if (roundRobinItemIndex < 0) {
@@ -154,6 +169,9 @@ public class Logic implements ModelChangeListener {
 	
 	private static int[][][] getPixelData(BufferedImage image,
 			int x, int y, int twidth, int theight) {
+		if (image == null) {
+			return null;
+		}
 		final int imageWidth = image.getWidth();
 		final int imageHeight = image.getHeight();
 
