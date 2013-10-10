@@ -3,6 +3,8 @@ package main;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.codehaus.jackson.JsonNode;
+
 public class Trigger {
 	HashMap<Integer, HashMap<Integer, HashMap<Integer, Integer>>> coefficients = new HashMap<Integer, HashMap<Integer,HashMap<Integer,Integer>>>();
 	private String name;
@@ -30,6 +32,7 @@ public class Trigger {
 			}
 			columnCoefficients.remove(y);
 			for (ModelChangeListener listener : listeners) {
+				System.out.println("Coefficient removed");
 				listener.modelChanged();
 			}
 			if (columnCoefficients.size() == 0) {
@@ -43,19 +46,17 @@ public class Trigger {
 			if (imageCoefficients == null) {
 				imageCoefficients = new HashMap<Integer, HashMap<Integer,Integer>>();
 				coefficients.put(image, imageCoefficients);
-				for (ModelChangeListener listener : listeners) {
-					listener.modelChanged();
-				}
 			}
 			HashMap<Integer, Integer> columnCoefficients = imageCoefficients.get(x);
 			if (columnCoefficients == null) {
 				columnCoefficients = new HashMap<Integer, Integer>();
 				imageCoefficients.put(x, columnCoefficients);
-				for (ModelChangeListener listener : listeners) {
-					listener.modelChanged();
-				}
 			}
 			columnCoefficients.put(y, value);
+			for (ModelChangeListener listener : listeners) {
+				System.out.println("Coefficient added");
+				listener.modelChanged();
+			}
 		}
 	}
 	
@@ -117,8 +118,10 @@ public class Trigger {
 	}
 
 	public void setMinThreshold(int minThreshold) {
+		System.out.println(this.minThreshold + " " + minThreshold);
 		this.minThreshold = minThreshold;
 		for (ModelChangeListener listener : listeners) {
+			System.out.println("Min set ");
 			listener.modelChanged();
 		}
 
@@ -129,8 +132,10 @@ public class Trigger {
 	}
 
 	public void setMaxThreshold(int maxThreshold) {
+		System.out.println(this.maxThreshold + " " + maxThreshold);
 		this.maxThreshold = maxThreshold;
 		for (ModelChangeListener listener : listeners) {
+			System.out.println("Max set ");
 			listener.modelChanged();
 		}
 	}
@@ -142,6 +147,12 @@ public class Trigger {
 		builder.append("\"");
 		builder.append(name);
 		builder.append("\"");
+		builder.append(",\n");
+		builder.append("\"minThreshold\":");
+		builder.append(minThreshold);
+		builder.append(",\n");
+		builder.append("\"maxThreshold\":");
+		builder.append(maxThreshold);
 		builder.append(",\n");
 		builder.append("\"coefficients\":\n");
 		builder.append("[\n");
@@ -183,5 +194,13 @@ public class Trigger {
 		} else {
 			return minThreshold + "[ x ]" + maxThreshold;
 		}
+	}
+
+	public static Trigger parseFromJson(JsonNode triggerNode) {
+		Trigger trigger = new Trigger(triggerNode.get("name").getTextValue());
+		trigger.setMinThreshold(triggerNode.get("minThreshold").getIntValue());
+		trigger.setMaxThreshold(triggerNode.get("maxThreshold").getIntValue());
+		System.out.println("Parsed trigger " + trigger.minThreshold + " " + trigger.maxThreshold);
+		return trigger;
 	}
 }

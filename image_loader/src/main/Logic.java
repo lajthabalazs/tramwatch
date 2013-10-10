@@ -245,13 +245,28 @@ public class Logic implements ModelChangeListener {
 		System.out.println("Load from file " + file);
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode root = mapper.readTree(file);
-		
+		JsonNode triggers = root.get("triggers");
+		for (JsonNode triggerNode : triggers) {
+			Trigger trigger = Trigger.parseFromJson(triggerNode);
+			if (this.triggers.containsKey(trigger.getName())) {
+				this.triggers.get(trigger.getName()).unregisterListener(this);
+				this.triggers.put(trigger.getName(), trigger);
+			}
+		}
+		for (ModelChangeListener listener : listeners){
+			listener.modelChanged();
+		}
 	}
 
 	@Override
 	public void modelChanged() {
+		System.out.println("Model changed proxied.");
 		for (ModelChangeListener listener : listeners) {
 			listener.modelChanged();
 		}
+	}
+
+	public Trigger getTrigger(String triggerName) {
+		return triggers.get(triggerName);
 	}
 }

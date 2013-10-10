@@ -36,17 +36,18 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	private static final String LOAD_TRIGGERS = "Load triggers";
 	private Logic logic;
 	private ImageGrid imageGrid;
-	private HashMap<Trigger, JLabel> actualValueLabels = new HashMap<Trigger, JLabel>();
-	private HashMap<String, Trigger> triggers = new HashMap<String, Trigger>();
+	private HashMap<String, JLabel> actualValueLabels = new HashMap<String, JLabel>();
 	private Trigger selectedTrigger;
 	private boolean paused = true;	
 	
 	final JFileChooser fc = new JFileChooser();
+
+	private HashMap<String, JTextField> minThresholdEdits = new HashMap<String, JTextField>();
+	private HashMap<String, JTextField> maxThresholdEdits = new HashMap<String, JTextField>();
 	
 	public MainFrame() {
 		super("Tram watch v0.1");
 		this.logic = new Logic();
-		logic.registerListener(this);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		
 		Container contentPane = getContentPane();
@@ -114,13 +115,12 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		
 		selectedTrigger = logic.getTriggers().get(0);
 		imageGrid.setSelectedTrigger(selectedTrigger);
+		logic.registerListener(this);
 	}
+
 	private JPanel createTriggerPanel() {
 		JPanel triggerPanel = new JPanel();
 		List<Trigger> triggers = logic.getTriggers();
-		for (Trigger trigger : triggers) {
-			this.triggers.put(trigger.getName(), trigger);
-		}
 		triggerPanel.setLayout(new GridLayout(5, triggers.size() + 1));
 		triggerPanel.add(new JLabel("Triggers"));
 		ButtonGroup buttonGroup = new ButtonGroup();
@@ -140,6 +140,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JTextField maxThresholdEdit = new JTextField(10);
+			maxThresholdEdits.put(localTrigger.getName(), maxThresholdEdit);
 			maxThresholdEdit.setText("" + localTrigger.getMaxThreshold());
 			maxThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
 				@Override public void removeUpdate(DocumentEvent e) { update();}
@@ -147,7 +148,10 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 				@Override public void changedUpdate(DocumentEvent e) {update();}
 				private void update() {
 					try {
-						localTrigger.setMaxThreshold(Integer.parseInt(maxThresholdEdit.getText()));
+						int newMax = Integer.parseInt(maxThresholdEdit.getText());
+						if (localTrigger.getMaxThreshold() != newMax) {
+							localTrigger.setMaxThreshold(newMax);
+						}
 					} catch (Exception ex) {
 					}
 				}
@@ -158,6 +162,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		for (Trigger trigger : triggers) {
 			final Trigger localTrigger = trigger;
 			final JTextField minThresholdEdit = new JTextField(10);
+			minThresholdEdits.put(localTrigger.getName(), minThresholdEdit);
 			minThresholdEdit.setText("" + localTrigger.getMinThreshold());
 			minThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
 				@Override public void removeUpdate(DocumentEvent e) { update();}
@@ -165,7 +170,10 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 				@Override public void changedUpdate(DocumentEvent e) {update();}
 				private void update() {
 					try {
-						localTrigger.setMinThreshold(Integer.parseInt(minThresholdEdit.getText()));
+						int newMin = Integer.parseInt(minThresholdEdit.getText());
+						if (localTrigger.getMinThreshold() != newMin) {
+							localTrigger.setMinThreshold(newMin);
+						}
 					} catch (Exception ex) {
 					}
 				}
@@ -191,7 +199,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		for (Trigger trigger : triggers) {
 			JLabel actualValueLabel = new JLabel("0");
 			actualValueLabel.setOpaque(true);
-			actualValueLabels .put(trigger, actualValueLabel);
+			actualValueLabels .put(trigger.getName(), actualValueLabel);
 			triggerPanel.add(actualValueLabel);
 		}
 		
@@ -227,20 +235,28 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 				}
 	        }
 		} else {
-			selectedTrigger = triggers.get(e.getActionCommand());
+			selectedTrigger = logic.getTrigger(e.getActionCommand());
 			imageGrid.setSelectedTrigger(selectedTrigger);
 		}
 	}
 
 	@Override
 	public void modelChanged() {
+		System.out.println("Model changed");
 		// Refresh triggers
-		for (Trigger trigger : triggers.values()) {
-			actualValueLabels.get(trigger).setText("" + trigger.getValue());
+		List<Trigger> triggers = logic.getTriggers();
+		for (Trigger trigger : triggers) {
+			actualValueLabels.get(trigger.getName()).setText("" + trigger.getValue());
+			if (!maxThresholdEdits.get(trigger.getName()).getText().equals(trigger.getMaxThreshold())) {
+				maxThresholdEdits.get(trigger.getName()).setText("" + trigger.getMaxThreshold());
+			}
+			if (!minThresholdEdits.get(trigger.getName()).getText().equals(trigger.getMinThreshold())) {
+				minThresholdEdits.get(trigger.getName()).setText("" + trigger.getMinThreshold());
+			}
 			if (trigger.isActive()) {
-				actualValueLabels.get(trigger).setBackground(Color.green);
+				actualValueLabels.get(trigger.getName()).setBackground(Color.green);
 			} else {
-				actualValueLabels.get(trigger).setBackground(Color.yellow);
+				actualValueLabels.get(trigger.getName()).setBackground(Color.yellow);
 			}
 		}
 	}
