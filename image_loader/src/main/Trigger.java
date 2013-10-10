@@ -74,8 +74,12 @@ public class Trigger {
 		for (Integer imageKey : coefficients.keySet()) {
 			for (Integer columnKey : coefficients.get(imageKey).keySet()) {
 				for (Integer rowKey : coefficients.get(imageKey).get(columnKey).keySet()) {
-					value += aggregatedDifferences[imageKey][columnKey][rowKey] * coefficients.get(imageKey).get(columnKey).get(rowKey);
-					total += Math.max(0,coefficients.get(imageKey).get(columnKey).get(rowKey));
+					if (aggregatedDifferences != null &&
+							aggregatedDifferences[imageKey] != null &&
+							aggregatedDifferences[imageKey][columnKey] != null) {
+						value += aggregatedDifferences[imageKey][columnKey][rowKey] * coefficients.get(imageKey).get(columnKey).get(rowKey);
+						total += Math.max(0,coefficients.get(imageKey).get(columnKey).get(rowKey));
+					}
 				}
 			}
 		}
@@ -118,7 +122,7 @@ public class Trigger {
 	}
 
 	public void setMinThreshold(int minThreshold) {
-		System.out.println(this.minThreshold + " " + minThreshold);
+		System.out.println("Min changed from " + this.minThreshold + " to " + minThreshold);
 		this.minThreshold = minThreshold;
 		for (ModelChangeListener listener : listeners) {
 			System.out.println("Min set ");
@@ -132,7 +136,7 @@ public class Trigger {
 	}
 
 	public void setMaxThreshold(int maxThreshold) {
-		System.out.println(this.maxThreshold + " " + maxThreshold);
+		System.out.println("Max changed from " + this.maxThreshold + " to " + maxThreshold);
 		this.maxThreshold = maxThreshold;
 		for (ModelChangeListener listener : listeners) {
 			System.out.println("Max set ");

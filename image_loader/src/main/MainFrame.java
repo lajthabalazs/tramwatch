@@ -23,8 +23,6 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileFilter;
 
 import org.codehaus.jackson.JsonProcessingException;
@@ -38,7 +36,6 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 	private Logic logic;
 	private ImageGrid imageGrid;
 	private HashMap<String, JLabel> actualValueLabels = new HashMap<String, JLabel>();
-	private Trigger selectedTrigger;
 	private boolean paused = true;	
 	
 	final JFileChooser fc;
@@ -129,8 +126,7 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 			}
 		}).start();
 		
-		selectedTrigger = logic.getTriggers().get(0);
-		imageGrid.setSelectedTrigger(selectedTrigger.getName());
+		imageGrid.setSelectedTrigger(logic.getTriggers().get(0).getName());
 		logic.registerListener(this);
 	}
 
@@ -154,46 +150,20 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 		}
 		triggerPanel.add(new JLabel("Max"));
 		for (Trigger trigger : triggers) {
-			final Trigger localTrigger = trigger;
-			final JTextField maxThresholdEdit = new JTextField(10);
-			maxThresholdEdits.put(localTrigger.getName(), maxThresholdEdit);
-			maxThresholdEdit.setText("" + localTrigger.getMaxThreshold());
-			maxThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
-				@Override public void removeUpdate(DocumentEvent e) { update();}
-				@Override public void insertUpdate(DocumentEvent e) {update();}
-				@Override public void changedUpdate(DocumentEvent e) {update();}
-				private void update() {
-					try {
-						int newMax = Integer.parseInt(maxThresholdEdit.getText());
-						if (localTrigger.getMaxThreshold() != newMax) {
-							localTrigger.setMaxThreshold(newMax);
-						}
-					} catch (Exception ex) {
-					}
-				}
-			});
+			JTextField maxThresholdEdit = new JTextField(10);
+			maxThresholdEdits.put(trigger.getName(), maxThresholdEdit);
+			maxThresholdEdit.setText("" + trigger.getMaxThreshold());
+			maxThresholdEdit.setActionCommand("MAX" + trigger.getName());
+			maxThresholdEdit.addActionListener(this);
 			triggerPanel.add(maxThresholdEdit);
 		}
 		triggerPanel.add(new JLabel("Min"));
 		for (Trigger trigger : triggers) {
-			final Trigger localTrigger = trigger;
-			final JTextField minThresholdEdit = new JTextField(10);
-			minThresholdEdits.put(localTrigger.getName(), minThresholdEdit);
-			minThresholdEdit.setText("" + localTrigger.getMinThreshold());
-			minThresholdEdit.getDocument().addDocumentListener(new DocumentListener() {
-				@Override public void removeUpdate(DocumentEvent e) { update();}
-				@Override public void insertUpdate(DocumentEvent e) {update();}
-				@Override public void changedUpdate(DocumentEvent e) {update();}
-				private void update() {
-					try {
-						int newMin = Integer.parseInt(minThresholdEdit.getText());
-						if (localTrigger.getMinThreshold() != newMin) {
-							localTrigger.setMinThreshold(newMin);
-						}
-					} catch (Exception ex) {
-					}
-				}
-			});
+			JTextField minThresholdEdit = new JTextField(10);
+			minThresholdEdits.put(trigger.getName(), minThresholdEdit);
+			minThresholdEdit.setText("" + trigger.getMinThreshold());
+			minThresholdEdit.addActionListener(this);
+			minThresholdEdit.setActionCommand("MIN" + trigger.getName());
 			triggerPanel.add(minThresholdEdit);
 		}
 		triggerPanel.add(new JLabel("Range type"));
@@ -253,9 +223,30 @@ public class MainFrame extends JFrame implements ActionListener, ModelChangeList
 					e1.printStackTrace();
 				}
 	        }
+		} else if (e.getActionCommand().startsWith("MAX")){
+			String triggerName = e.getActionCommand().substring(3);
+			Trigger trigger = logic.getTrigger(triggerName);
+			JTextField maxThresholdEdit = maxThresholdEdits.get(triggerName);
+			try {
+				int newMax = Integer.parseInt(maxThresholdEdit.getText());
+				if (trigger.getMaxThreshold() != newMax) {
+					trigger.setMaxThreshold(newMax);
+				}
+			} catch (Exception ex) {
+			}
+		} else if (e.getActionCommand().startsWith("MIN")){
+			String triggerName = e.getActionCommand().substring(3);
+			Trigger trigger = logic.getTrigger(triggerName);
+			JTextField minThresholdEdit = minThresholdEdits.get(triggerName);
+			try {
+				int newMin = Integer.parseInt(minThresholdEdit.getText());
+				if (trigger.getMinThreshold() != newMin) {
+					trigger.setMinThreshold(newMin);
+				}
+			} catch (Exception ex) {
+			}
 		} else {
-			selectedTrigger = logic.getTrigger(e.getActionCommand());
-			imageGrid.setSelectedTrigger(selectedTrigger.getName());
+			imageGrid.setSelectedTrigger(logic.getTrigger(e.getActionCommand()).getName());
 		}
 	}
 
