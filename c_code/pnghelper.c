@@ -2,15 +2,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-    
+	
 #include "pnghelper.h"
+
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
 
 /* Given "bitmap", this returns the pixel of bitmap at the point 
    ("x", "y"). */
 
+static pixel_t tmpp;
+   
 inline pixel_t * pixel_at (bitmap_t * bitmap, int x, int y)
 {
     return bitmap->pixels + bitmap->width * y + x;
+}
+
+pixel_t * yellow_at(bitmap_t * bitmap, int x, int y) {
+	memcpy(&tmpp, bitmap->pixels + bitmap->width * y + x, sizeof (pixel_t));
+	// RGB to CYMK
+	float k,yellow;
+	k = 1.0 - (float)(max(max(tmpp.red,tmpp.green),tmpp.blue)) / 255.0;
+	yellow = (1.0 - (float)tmpp.blue / 255.0 - k) / (1.0 - k);
+	// Keep yellow, CYMK to RGB
+	tmpp.red = 255.0 * (1.0 - 0.0) * (1.0 - k);
+	tmpp.green = 255.0 * (1.0 - 0.0) * (1.0 - k);
+	tmpp.blue = 255.0 * (1.0 - yellow) * (1.0 - k);
+	
+	return &tmpp;
 }
     
 /* Write "bitmap" to a PNG file specified by "path"; returns 0 on
@@ -91,7 +112,8 @@ int save_png_to_file_crop (bitmap_t *bitmap, crop_t *crop, const char *path)
             png_malloc (png_ptr, sizeof (uint8_t) * width * pixel_size);
         row_pointers[y - crop->top] = row;
         for (x = crop->left; x < crop->right; ++x) {
-            pixel_t * pixel = pixel_at (bitmap, x, y);
+            //pixel_t * pixel = pixel_at (bitmap, x, y);
+			pixel_t * pixel = yellow_at (bitmap, x, y);
             *row++ = pixel->red;
             *row++ = pixel->green;
             *row++ = pixel->blue;
