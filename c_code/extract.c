@@ -64,28 +64,40 @@ void cbVideoPostrender(void *p_video_data, uint8_t *p_pixel_buffer,
     char filename[128];
     bitmap.width = width;
     bitmap.height = height;
+	
+	sprintf(filename, "frame%05d.png", framenum);
+    save_png_to_file_crop(&bitmap, &crop, filename);
+    //save_png_to_file(&bitmap, filename);
+	
+	
 	int f = store_frame(&bitmap, &crop);
 		
 	calculate_alldiffs(f);
 	int t;
 	for (t = 0; t < triggerCount; t++) {
-		int r = sumtrigger(triggers[t].triggerChain);
+		if (triggers[t].div == 0) continue;
+		int r = sumtrigger(triggers[t].triggerChain) / triggers[t].div;
 		if (r > triggers[t].thMin && r < triggers[t].thMax) {
-			printf("Trigger! %s[%d] (%d)\n", triggers[t].name, t, r);
-			sprintf(filename, "frame%05d.png", framenum);
+			printf("frame %d, Trigger! %s[%d] (%d)\n", framenum, triggers[t].name, t, r);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum);
 			write_frame(f, filename);
-			sprintf(filename, "frame%05d.png", framenum-1);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum-1);
 			write_frame(f-1, filename);
-			sprintf(filename, "frame%05d.png", framenum-2);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum-2);
 			write_frame(f-2, filename);
-			sprintf(filename, "frame%05d.png", framenum-3);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum-3);
 			write_frame(f-3, filename);
-			sprintf(filename, "frame%05d.png", framenum-4);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum-4);
 			write_frame(f-4, filename);
+			sprintf(filename, "TRIGGERframe%05d.png", framenum-5);
+			write_frame(f-5, filename);
 		}
 		else /*if (r != 0)*/ {
-			printf("DEBUG: No trigger %s[%d] (%d)\n", triggers[t].name, t, r);
+			printf("DEBUG: frame %d, No trigger %s[%d] (%d)\n", framenum, triggers[t].name, t, r);
 		}
+		
+		sprintf(filename, "xframe%05d.png", framenum);
+		write_frame(f, filename);
 	}
 
     framenum++;	
@@ -97,10 +109,10 @@ void cbVideoPostrender(void *p_video_data, uint8_t *p_pixel_buffer,
 int main(int argc, char **argv)
 {
 
-	crop.top = 120;
-	crop.bottom = 176;
-	crop.left = 200;
-	crop.right = 288;
+	crop.top = 120; // 120 
+	crop.bottom = 176; // 176
+	crop.left = 200; // 200
+	crop.right = 288; // 288
 
 	skip = 30;
 	

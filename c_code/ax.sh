@@ -6,7 +6,7 @@ while true; do
  cd $D
  touch vlc-log.txt
 
- ../a.out &
+ ../a.out -t ../left_leaving.json > debug.out &
  APID=$!
 
  STOP=0
