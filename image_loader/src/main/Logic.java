@@ -227,6 +227,8 @@ public class Logic implements ModelChangeListener {
 			Trigger trigger = triggers.get(triggerName);
 			if (trigger.isActive()) {
 				System.out.println(imageIndex + " " + trigger.getName() + " ACTIVE " + trigger.getValue() + " (" + trigger.getRangeString() + ")");
+			} else if (trigger.getMinThreshold() != 0) {
+				System.out.println(imageIndex + " " + trigger.getName() + " PASSIVE " + trigger.getValue() + " (" + trigger.getRangeString() + ")");
 			}
 
 		}
